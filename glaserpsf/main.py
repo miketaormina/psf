@@ -91,9 +91,14 @@ def getPSF(bead, XYZ, initial_guess, lower_bounds, upper_bounds, options):
 
     bead = bead/numpy.max(bead)
     
-    popt, pcov = opt.curve_fit(gaussian_3D, XYZ, 
-                            bead.ravel(), p0 = initial_guess,
-                            bounds = (lower_bounds, upper_bounds))
+    #This doesn't seem to catch fit failures, not sure why
+    try:
+        popt, pcov = opt.curve_fit(gaussian_3D, XYZ, 
+                                bead.ravel(), p0 = initial_guess,
+                                bounds = (lower_bounds, upper_bounds))
+    except RuntimeError:
+        data = DataFrame([np.nan,]*6, index = ['FWHM_x', 'FWHM_y', 'FWHM_z', 'rotx', 'roty', 'rotz']).T    
+        return data
 
     xo, yo, zo, sigma_x, sigma_y, sigma_z, amplitude, offset, rotx, roty, rotz = popt[0], popt[1], popt[2], popt[3], popt[4], popt[5], popt[6], popt[7], popt[8], popt[9], popt[10]
 
@@ -101,7 +106,9 @@ def getPSF(bead, XYZ, initial_guess, lower_bounds, upper_bounds, options):
     FWHM_y = numpy.abs(4*sigma_y*numpy.sqrt(-0.5*numpy.log(0.5)))/options['pxPerUmLat']
     FWHM_z = numpy.abs(4*sigma_z*numpy.sqrt(-0.5*numpy.log(0.5)))/options['pxPerUmAx']
 
-    data = DataFrame([FWHM_x, FWHM_y, FWHM_z, rotx, roty, rotz], index = ['FWHM_x', 'FWHM_y', 'FWHM_z', 'x_perr', 'y_perr', 'z_perr', 'rotx', 'roty', 'rotz']).T
+    # are x_perr etc from pcov?
+    #data = DataFrame([FWHM_x, FWHM_y, FWHM_z, rotx, roty, rotz], index = ['FWHM_x', 'FWHM_y', 'FWHM_z', 'x_perr', 'y_perr', 'z_perr', 'rotx', 'roty', 'rotz']).T
+    data = DataFrame([FWHM_x, FWHM_y, FWHM_z, rotx, roty, rotz], index = ['FWHM_x', 'FWHM_y', 'FWHM_z', 'rotx', 'roty', 'rotz']).T
 
     return data
     
