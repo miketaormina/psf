@@ -8,12 +8,29 @@ from scipy.stats import multivariate_normal
 import matplotlib.pyplot as plt
 import math
 import scipy.optimize as opt
+from numpy.random import default_rng
+from tqdm.auto import tqdm
+from time import time
+
+max_bead_default=10000
 
 def compute(im, options):
 
     im = im.astype(float)
-
+    t0 = time()
+    print(f'Finding beads in im ({im.shape})...')
     beads, maxima, centers, smoothed = getCenters(im, options)
+    #max_beads = options.get('maxBeads',max_bead_default)
+    print(f'Found beads in {(time()-t0)/60} minute.')
+    """print(f'Found {len(beads)} beads, fitting {max_beads}. Default maxBeads currently set to {max_bead_default}.')
+    if len(beads)>max_beads:
+        rng = default_rng()
+        bead_idx = rng.choice(len(beads), max_beads, replace=False)
+        beads = [beads[i] for i in bead_idx]
+        maxima = [maxima[i] for i in bead_idx]
+        centers = asarray([centers[i] for i in bead_idx])
+        #smoothed = [smoothed[i] for i in bead_idx]"""
+
 
     x = numpy.linspace(-beads[0].shape[2]/2.0, beads[0].shape[2]/2.0, beads[0].shape[2])
     y = numpy.linspace(-beads[0].shape[1]/2.0, beads[0].shape[1]/2.0, beads[0].shape[1])
@@ -38,7 +55,10 @@ def compute(im, options):
 
     X, Z, Y = numpy.meshgrid(x, z, y)
 
-    data = [getPSF(i, numpy.array([X,Y,Z]), initial_guess, lower_bounds, upper_bounds, options) for i in beads]
+    #data = [getPSF(i, numpy.array([X,Y,Z]), initial_guess, lower_bounds, upper_bounds, options) for i in beads]
+    data = []
+    for i in tqdm(beads, total=len(beads)):
+        data.append(getPSF(i, numpy.array([X,Y,Z]), initial_guess, lower_bounds, upper_bounds, options))
     PSF = pd.concat([i for i in data])
     PSF['Max'] = maxima
     PSF['x_center'] = centers[:,2]
@@ -66,16 +86,31 @@ def volume(im, center, window):
         return volume
 
 def findBeads(im, window, thresh):
+    t0 = time()
+    print(f'Applying smoothing filter and localizing beads...')
     smoothed = gaussian_filter(im, 1, output=None, mode='nearest', cval=0, multichannel=None)
+    #print(f'Smoothed in {(time()-t0)/60} minutes. Now finding beads...')
+    t0 = time()
     centers = peak_local_max(smoothed, min_distance=3, threshold_rel=thresh, exclude_border=True)
+    print(f'Found beads in {(time()-t0)/60} minutes.')
     return centers, smoothed.max(axis=0)
 
 def keepBeads(im, window, centers, options):
+    print(f'Filtering found beads...')
+    t0 = time()
+    max_beads = options.get('maxBeads',max_bead_default)
+    print(f'Found {len(centers)} beads, randomly choosing {max_beads} and filtering on window. Default maxBeads currently set to {max_bead_default}.')
+    if len(centers)>max_beads:
+        rng = default_rng()
+        bead_idx = rng.choice(len(centers), max_beads, replace=False)
+        centers = asarray([centers[i] for i in bead_idx])
+        
     centersM = asarray([[x[0]/options['pxPerUmAx'], x[1]/options['pxPerUmLat'], x[2]/options['pxPerUmLat']] for x in centers])
     centerDists = [nearest(x,centersM) for x in centersM]
     keep = where([x>3 for x in centerDists])
     centers = centers[keep[0],:]
     keep = where([inside(im.shape, x, window) for x in centers])
+    print(f'Filtered to {len(centers[keep[0],:])} beads in {(time()-t0)/60} minutes.')
     return centers[keep[0],:]
 
 def getCenters(im, options):
