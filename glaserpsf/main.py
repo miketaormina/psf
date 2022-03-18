@@ -132,7 +132,7 @@ def getPSF(bead, XYZ, initial_guess, lower_bounds, upper_bounds, options):
                                 bead.ravel(), p0 = initial_guess,
                                 bounds = (lower_bounds, upper_bounds))
     except RuntimeError:
-        data = DataFrame([np.nan,]*6, index = ['FWHM_x', 'FWHM_y', 'FWHM_z', 'rotx', 'roty', 'rotz']).T    
+        data = DataFrame([numpy.nan,]*6, index = ['FWHM_x', 'FWHM_y', 'FWHM_z', 'rotx', 'roty', 'rotz']).T    
         return data
 
     xo, yo, zo, sigma_x, sigma_y, sigma_z, amplitude, offset, rotx, roty, rotz = popt[0], popt[1], popt[2], popt[3], popt[4], popt[5], popt[6], popt[7], popt[8], popt[9], popt[10]
