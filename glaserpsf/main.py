@@ -13,6 +13,8 @@ from tqdm.auto import tqdm
 from time import time
 
 max_bead_default=10000
+# restricting rotation
+rotation_bounds = [5.0*numpy.pi/180* i for i in [-1,1]]
 
 def compute(im, options):
 
@@ -20,18 +22,8 @@ def compute(im, options):
     t0 = time()
     print(f'Finding beads in im ({im.shape})...')
     beads, maxima, centers, smoothed = getCenters(im, options)
-    #max_beads = options.get('maxBeads',max_bead_default)
     print(f'Found beads in {(time()-t0)/60} minute.')
-    """print(f'Found {len(beads)} beads, fitting {max_beads}. Default maxBeads currently set to {max_bead_default}.')
-    if len(beads)>max_beads:
-        rng = default_rng()
-        bead_idx = rng.choice(len(beads), max_beads, replace=False)
-        beads = [beads[i] for i in bead_idx]
-        maxima = [maxima[i] for i in bead_idx]
-        centers = asarray([centers[i] for i in bead_idx])
-        #smoothed = [smoothed[i] for i in bead_idx]"""
-
-
+    
     x = numpy.linspace(-beads[0].shape[2]/2.0, beads[0].shape[2]/2.0, beads[0].shape[2])
     y = numpy.linspace(-beads[0].shape[1]/2.0, beads[0].shape[1]/2.0, beads[0].shape[1])
     z = numpy.linspace(-beads[0].shape[0]/2.0, beads[0].shape[0]/2.0, beads[0].shape[0])
@@ -46,12 +38,12 @@ def compute(im, options):
     lower_bounds = (-beads[0].shape[2]/2.0, -beads[0].shape[1]/2.0, -beads[0].shape[0]/2.0,
         0.1, 0.1, 0.1,
         0.5, -0.1,
-        -math.pi/2.0, -math.pi/2.0, -math.pi/2.0)
+        rotation_bounds[0],rotation_bounds[0],rotation_bounds[0])
 
     upper_bounds = (beads[0].shape[2]/2.0, beads[0].shape[1]/2.0, beads[0].shape[0]/2.0,
         beads[0].shape[2], beads[0].shape[1], beads[0].shape[0],
         1.1, 0.1,
-        math.pi/2.0, math.pi/2.0, math.pi/2.0)
+        rotation_bounds[1], rotation_bounds[1], rotation_bounds[1])
 
     X, Z, Y = numpy.meshgrid(x, z, y)
 
@@ -99,7 +91,7 @@ def keepBeads(im, window, centers, options):
     print(f'Filtering found beads...')
     t0 = time()
     max_beads = options.get('maxBeads',max_bead_default)
-    print(f'Found {len(centers)} beads, randomly choosing {max_beads} and filtering on window. Default maxBeads currently set to {max_bead_default}.')
+    print(f'Found {len(centers)} beads, randomly choosing no more than {max_beads} and filtering on window. Default maxBeads currently set to {max_bead_default}.')
     if len(centers)>max_beads:
         rng = default_rng()
         bead_idx = rng.choice(len(centers), max_beads, replace=False)
